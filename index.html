@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Survival</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #111;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        div {
+            position: absolute;
+            font-family: sans-serif;
+            user-select: none;
+        }
+
+        #gameOverBackground {
+            background-color: #000000;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            display: flex;
+            font-size: 60px;
+            transition: opacity 0.4s;
+        }
+
+        #gameOverText {
+            color: rgb(255, 0, 0);
+            text-align: center;
+        }
+
+        #wave {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            padding-left: 80px;
+            padding-right: 80px;
+            background-color: #a200ff80;
+            color: rgb(0, 0, 0);
+            left: 50%;
+            font-size: 30px;
+            transform: translate(-50%, 0);
+            transition: opacity 0.4s;
+        }
+
+        #gameCompleteBackground {
+            background-color: #d4d249;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            display: flex;
+            font-size: 60px;
+            transition: opacity 0.4s;
+        }
+
+        #gameCompleteText {
+            color: rgb(253, 220, 189);
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wave">Wave</div>
+    <div id="gameOverBackground">
+        <div id="gameOverText">Game Over</div>
+    </div>
+    <div id="gameCompleteBackground">
+        <div id="gameCompleteText">Game Complete</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const enemyDamageSound = new Audio("./enemy_damage.wav");
+        const enemyBurstSound = new Audio("./enemy_burst.wav");
+        const enemyDeathSound = new Audio("./enemy_death.wav");
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const gameOverBackground = document.getElementById("gameOverBackground");
+        const gameCompleteBackground = document.getElementById("gameCompleteBackground");
+        const waveText = document.getElementById("wave");
+        const waves = [
+            {
+                length: 8_000, zombies: [
+                    { count: 20, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                ]
+            },
+            {
+                length: 9_000, zombies: [
+                    { count: 30, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                    { count: 5, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                ]
+            },
+            {
+                length: 5_000, zombies: [
+                    { count: 15, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                    { count: 15, zombie: { color: "greenyellow", size: 30, health: 1, speed: 3 } },
+                    { count: 2, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                ]
+            },
+            {
+                length: 8_000, zombies: [
+                    { count: 20, zombie: { color: "greenyellow", size: 30, health: 1, speed: 3 } },
+                    { count: 2, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                    { count: 4, zombie: { color: "blue", size: 36, health: 2, speed: 3.5 } },
+                ]
+            },
+            {
+                length: 6_000, zombies: [
+                    { count: 20, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                    { count: 60, zombie: { color: "olive", size: 30, health: 1, speed: 1.5 } },
+                ]
+            },
+            {
+                length: 8_000, zombies: [
+                    { count: 6, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                    { count: 4, zombie: { color: "blue", size: 36, health: 2, speed: 3.5 } },
+                    { count: 12, zombie: { color: "olive", size: 30, health: 1, speed: 1.5 } },
+                    { count: 5, zombie: { color: "orange", size: 15, health: 1, speed: 4 } },
+                ]
+            },
+            {
+                length: 12_000, zombies: [
+                    { count: 8, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                    { count: 6, zombie: { color: "maroon", size: 45, health: 5, speed: 1.5 } },
+                    { count: 8, zombie: { color: "greenyellow", size: 30, health: 1, speed: 3 } },
+                ]
+            },
+            {
+                length: 8_000, zombies: [
+                    { count: 20, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                    { count: 6, zombie: { color: "blue", size: 36, health: 2, speed: 3.5 } },
+                    { count: 2, zombie: { color: "maroon", size: 45, health: 5, speed: 1.5 } },
+                ]
+            },
+            {
+                length: 15_000, zombies: [
+                    { count: 10, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                    { count: 6, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                    { count: 15, zombie: { color: "greenyellow", size: 30, health: 1, speed: 3 } },
+                    { count: 7, zombie: { color: "blue", size: 36, health: 2, speed: 3.5 } },
+                    { count: 12, zombie: { color: "olive", size: 30, health: 1, speed: 1.5 } },
+                    { count: 6, zombie: { color: "orange", size: 15, health: 1, speed: 4 } },
+                    { count: 4, zombie: { color: "maroon", size: 45, health: 5, speed: 1.5 } },
+                ]
+            },
+            {
+                length: 15_000, zombies: [
+                    { count: 5, zombie: { color: "green", size: 30, health: 1, speed: 2 } },
+                    { count: 8, zombie: { color: "red", size: 40, health: 3, speed: 1.75 } },
+                    { count: 2, zombie: { color: "greenyellow", size: 30, health: 1, speed: 3 } },
+                    { count: 4, zombie: { color: "blue", size: 36, health: 2, speed: 3.5 } },
+                    { count: 10, zombie: { color: "olive", size: 30, health: 1, speed: 1.5 } },
+                    { count: 4, zombie: { color: "maroon", size: 45, health: 5, speed: 1.5 } },
+                    { count: 2, zombie: { color: "cyan", size: 70, health: 20, speed: 2, spawns: { interval: 3000, zombie: { color: "orange", size: 15, health: 1, speed: 4 } } } },
+                    { count: 1, zombie: { color: "black", size: 100, health: 50, speed: 1.5, spawns: { interval: 5000, zombie: { color: "blue", size: 36, health: 2, speed: 3.5 } } } },
+                ]
+            },
+        ];
+        let particles;
+        let wave = 0;
+        let nextWaveReady = false;
+        let zombies;
+        let player = { radius: 10, dx: 0, dy: 0, angle: 0, speed: 1.5 };
+        let gameInterval;
+        let zombieSpawnIntervals = [];
+        let zombieSummonIntervals = [];
+        let nextWaveTimeout;
+        let isGameOver = false;
+        let damageBox = { x: 0, y: 0, size: 100, flash: 1 };
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        function Zombie(x, y, { color, size, health, speed, spawns }) {
+            this.x = x;
+            this.y = y;
+            this.size = size;
+            this.health = health;
+            this.speed = speed;
+            this.color = color;
+            this.flash = 0;
+            this.explosion = 0;
+            if (spawns !== undefined) {
+                this.spawnInterval = setInterval(() => {
+                    console.log(spawns.zombie);
+                    zombies.push(new Zombie(this.x, this.y, spawns.zombie));
+                }, spawns.interval);
+                zombieSummonIntervals.push(this.spawnInterval);
+            }
+            this.damage = () => {
+                enemyDamageSound.cloneNode().play();
+                this.flash = 1;
+                this.health--;
+                for (let i = 0; i < 6; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+            this.destroy = () => {
+                if (this.spawnInterval !== undefined) {
+                    zombieSummonIntervals.splice(zombieSummonIntervals.indexOf(this.spawnInterval), 1);
+                    clearInterval(this.spawnInterval);
+                }
+                enemyDeathSound.cloneNode().play();
+                const explosionInterval = setInterval(() => {
+                    this.explosion = Math.min(this.explosion + (1 / (300 / 20)), 1);
+                }, 20);
+                setTimeout(() => {
+                    enemyBurstSound.cloneNode().play();
+                    for (let i = 0; i < 30; i++) {
+                        particles.push(new Particle(this.x, this.y, this.color, 20));
+                    }
+                    clearInterval(explosionInterval);
+                    zombies.splice(zombies.indexOf(this), 1);
+                }, 300);
+            }
+        }
+
+        function Particle(x, y, color = "black", speed = 8) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.size = Math.random() * 8;
+            this.xSpeed = (0.5 - Math.random()) * speed;
+            this.ySpeed = (0.5 - Math.random()) * speed;
+            this.life = 1;
+        }
+
+        function spawnZombie(zombie) {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            if (side === 0) {
+                x = Math.random() * canvas.width;
+                y = 0;
+            } else if (side === 1) {
+                x = Math.random() * canvas.width;
+                y = canvas.height;
+            } else if (side === 2) {
+                x = 0;
+                y = Math.random() * canvas.height;
+            } else {
+                x = canvas.width;
+                y = Math.random() * canvas.height;
+            }
+            zombies.push(new Zombie(x, y, zombie));
+        }
+
+        function drawPlayer() {
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'black';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawZombies() {
+            zombies.forEach(zombie => {
+                ctx.globalAlpha = 1 - zombie.explosion ** 3;
+                ctx.fillStyle = zombie.color;
+                ctx.beginPath();
+                const zombieSize = zombie.size + zombie.explosion ** 4 * 10 + zombie.flash * 5;
+                ctx.rect(zombie.x - zombieSize * 0.5, zombie.y - zombieSize * 0.5, zombieSize, zombieSize);
+                ctx.fill();
+                ctx.fillStyle = `rgba(255, 255, 255, ${zombie.flash})`;
+                ctx.beginPath();
+                ctx.rect(zombie.x - zombieSize * 0.5, zombie.y - zombieSize * 0.5, zombieSize, zombieSize);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function updateZombies() {
+            zombies.forEach(zombie => {
+                zombie.flash = zombie.flash * 0.9;
+                if (zombie.explosion === 0) {
+                    const angleToPlayer = Math.atan2(player.y - zombie.y, player.x - zombie.x);
+                    zombie.x += Math.cos(angleToPlayer) * zombie.speed;
+                    zombie.y += Math.sin(angleToPlayer) * zombie.speed;
+                }
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach(particle => {
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.rect(particle.x - particle.size * 0.5, particle.y - particle.size * 0.5, particle.size, particle.size);
+                ctx.fill();
+            });
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.life = particle.life - 0.03;
+
+                particle.xSpeed *= 0.9;
+                particle.ySpeed *= 0.9;
+
+                particle.radius *= 0.95;
+
+                particle.x += particle.xSpeed;
+                particle.y += particle.ySpeed;
+
+                if (particle.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawDamageBox() {
+            damageBox.flash = damageBox.flash * 0.8;
+            ctx.fillStyle = `rgba(255, 0, 0, ${0.2 + damageBox.flash * 0.6})`;
+            ctx.beginPath();
+            ctx.rect(damageBox.x - damageBox.size * 0.5, damageBox.y - damageBox.size * 0.5, damageBox.size, damageBox.size);
+            ctx.fill();
+        }
+
+        function checkCollisions() {
+            zombies.forEach((zombie, index) => {
+                if (zombie.explosion === 0) {
+                    if (squareOverlapsCircle(zombie.x, zombie.y, zombie.size, player.x, player.y, player.radius)) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        function handleMouseMove(event) {
+            const dx = event.clientX - player.x;
+            const dy = event.clientY - player.y;
+            player.angle = Math.atan2(dy, dx);
+
+            damageBox.x = event.clientX;
+            damageBox.y = event.clientY;
+        }
+
+        function squareOverlapsCircle(squareX, squareY, squareSize, circleX, circleY, circleRadius) {
+            // Calculate the coordinates of the corners of the square.
+            const squareXMin = squareX - squareSize / 2;
+            const squareYMin = squareY - squareSize / 2;
+            const squareXMax = squareX + squareSize / 2;
+            const squareYMax = squareY + squareSize / 2;
+
+            // Find the closest point on the square to the center of the circle.
+            const closestX = Math.max(squareXMin, Math.min(circleX, squareXMax));
+            const closestY = Math.max(squareYMin, Math.min(circleY, squareYMax));
+
+            // Calculate the distance between the center of the circle and the closest point on the square.
+            const distance = Math.sqrt((circleX - closestX) ** 2 + (circleY - closestY) ** 2);
+
+            // Check if the distance is less than or equal to the radius of the circle.
+            return distance <= circleRadius;
+        }
+
+        function squaresOverlap(x1, y1, size1, x2, y2, size2) {
+            // Calculate the coordinates of the corners of the first square.
+            const x1_min = x1 - size1 / 2;
+            const y1_min = y1 - size1 / 2;
+            const x1_max = x1 + size1 / 2;
+            const y1_max = y1 + size1 / 2;
+
+            // Calculate the coordinates of the corners of the second square.
+            const x2_min = x2 - size2 / 2;
+            const y2_min = y2 - size2 / 2;
+            const x2_max = x2 + size2 / 2;
+            const y2_max = y2 + size2 / 2;
+
+            // Check if the squares overlap.
+            return (
+                x1_min < x2_max &&
+                x1_max > x2_min &&
+                y1_min < y2_max &&
+                y1_max > y2_min
+            );
+        }
+
+        function handleMouseClick(event) {
+            const mouseX = event.clientX;
+            const mouseY = event.clientY;
+            damageBox.flash = 1;
+            zombies.forEach((zombie, index) => {
+                if (zombie.explosion === 0) {
+                    if (squaresOverlap(damageBox.x, damageBox.y, damageBox.size, zombie.x, zombie.y, zombie.size)) {
+                        zombie.flash = 1;
+                        zombie.damage();
+                        if (zombie.health <= 0) {
+                            zombie.destroy();
+                        }
+                    }
+                }
+            });
+        }
+
+        function movePlayer() {
+            player.x += player.dx * player.speed;
+            player.y += player.dy * player.speed;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawPlayer();
+            drawZombies();
+            drawParticles();
+            drawDamageBox();
+        }
+
+        function update() {
+            if (isGameOver) return;
+
+            updateZombies();
+            movePlayer();
+            checkCollisions();
+            updateParticles();
+            draw();
+
+            if (nextWaveReady && zombies.length === 0) {
+                activateNextWave();
+            }
+        }
+
+        function gameOver() {
+            stopGame();
+            isGameOver = true;
+            gameOverBackground.style.opacity = '1';
+            setTimeout(() => {
+                restartGame();
+            }, 2000);
+        }
+
+        function restartGame() {
+            gameOverBackground.style.opacity = '0';
+            isGameOver = false;
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            gameInterval = setInterval(update, 1000 / 60);
+            particles = [];
+            zombies = [];
+            wave -= 1;
+            activateNextWave();
+        }
+
+        function nextWave() {
+            nextWaveReady = true;
+            zombieSpawnIntervals.forEach(zombieSpawnInterval => {
+                clearInterval(zombieSpawnInterval);
+            });
+            zombieSpawnIntervals = [];
+        }
+
+        function activateNextWave() {
+            nextWaveReady = false;
+            wave++;
+            if (wave === waves.length) {
+                gameCompleteBackground.style.opacity = '1';
+                stopGame();
+                return;
+            }
+            waveText.innerText = `Wave ${wave + 1}`;
+            waveText.style.opacity = '1';
+            setTimeout(() => {
+                waveText.style.opacity = '0';
+                waves[wave].zombies.forEach(zombie => {
+                    zombieSpawnIntervals.push(setInterval(() => {
+                        spawnZombie(zombie.zombie);
+                    }, waves[wave].length / zombie.count));
+                });
+                nextWaveTimeout = setTimeout(() => {
+                    nextWave();
+                }, waves[wave].length);
+            }, 2000);
+        }
+
+        function stopGame() {
+            zombieSpawnIntervals.forEach(zombieSpawnInterval => {
+                clearInterval(zombieSpawnInterval);
+            });
+            zombieSpawnIntervals = [];
+            zombieSummonIntervals.forEach(zombieSummonInterval => {
+                clearInterval(zombieSummonInterval);
+            });
+            zombieSummonIntervals = [];
+            clearInterval(gameInterval);
+            clearTimeout(nextWaveTimeout);
+        }
+
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mousedown", handleMouseClick);
+
+        let keys = { up: false, down: false, left: false, right: false };
+
+        window.addEventListener("keydown", function (event) {
+            if (event.key === "ArrowUp" || event.key === "w") keys.up = true;
+            if (event.key === "ArrowDown" || event.key === "s") keys.down = true;
+            if (event.key === "ArrowLeft" || event.key === "a") keys.left = true;
+            if (event.key === "ArrowRight" || event.key === "d") keys.right = true;
+            updatePlayerMovement();
+        });
+
+        window.addEventListener("keyup", function (event) {
+            if (event.key === "ArrowUp" || event.key === "w") keys.up = false;
+            if (event.key === "ArrowDown" || event.key === "s") keys.down = false;
+            if (event.key === "ArrowLeft" || event.key === "a") keys.left = false;
+            if (event.key === "ArrowRight" || event.key === "d") keys.right = false;
+            updatePlayerMovement();
+        });
+
+        function updatePlayerMovement() {
+            player.dx = (keys.right - keys.left) * player.speed;
+            player.dy = (keys.down - keys.up) * player.speed;
+        }
+
+        restartGame();
+    </script>
+</body>
+
+</html>
