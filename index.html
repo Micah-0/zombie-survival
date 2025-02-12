@@ -430,6 +430,10 @@
         function movePlayer() {
             player.x += player.dx * player.speed;
             player.y += player.dy * player.speed;
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width) player.x = canvas.width;
+            if (player.y < 0) player.y = 0;
+            if (player.y > canvas.height) player.y = canvas.height;
         }
 
         function draw() {
